@@ -1,28 +1,25 @@
-# Build stage
-FROM node:18.17.1-alpine as build
+# Use the official Node.js 18 image for building
+FROM node:18-alpine as build
 
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package.json and package-lock.json (if available)
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
 
-# Copy environment file for Docker
-COPY .env.docker .env
-
 # Build the application
 RUN npm run build
 
-# Production stage
+# Use nginx to serve the built application
 FROM nginx:alpine
 
-# Copy the build output to replace the default nginx contents
+# Copy the build output to nginx html directory
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
