@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: chat-app-mongodb
+    restart: unless-stopped
+    # Keep internal only for security
+    environment:
+      MONGO_INITDB_DATABASE: chat-app
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - chat-app-network
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chat-app-backend
+    restart: unless-stopped
+    ports:
+      - "8080:9000"  # Map to port 8080 instead of 9000
+    environment:
+      NODE_ENV: production
+      PORT: 9000
+      MONGODB_URI: mongodb://mongodb:27017/chat-app
+      JWT_SECRET: secret-kvndkvdlkajkhkJkBiu6JJNjkbhkvnskcmhLJ5dKbkjsamnv
+      FRONTEND_URL: http://YOUR_EC2_PUBLIC_IP
+    depends_on:
+      - mongodb
+    networks:
+      - chat-app-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Frontend Service (Main application on port 80)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL: http://YOUR_EC2_PUBLIC_IP:8080
+    container_name: chat-app-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"  # Standard HTTP port - no additional ports needed!
+    depends_on:
+      - backend
+    networks:
+      - chat-app-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  chat-app-network:
+    driver: bridge
